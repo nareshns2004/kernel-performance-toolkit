@@ -1,0 +1,6 @@
+cache:
+  command: ./build/cache_benchmark
+  events: cache-references,cache-misses,cycles,instructions
+memory:
+  command: ./build/memory_stress
+  events: page-faults,minor-faults,major-faults,task-clock
