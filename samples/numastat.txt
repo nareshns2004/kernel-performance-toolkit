@@ -1,0 +1,4 @@
+                           node0           node1
+numa_hit                  10000            9000
+numa_miss                   100             300
+numa_foreign                  0               0

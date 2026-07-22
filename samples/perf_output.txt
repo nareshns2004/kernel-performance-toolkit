@@ -1,0 +1,9 @@
+1,000,000;;cycles;;
+2,500,000;;instructions;;
+20,000;;cache-references;;
+1,000;;cache-misses;;
+120;;context-switches;;
+4;;cpu-migrations;;
+80;;minor-faults;;
+2;;major-faults;;
+150.00;msec;task-clock;;

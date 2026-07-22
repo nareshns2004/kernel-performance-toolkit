@@ -1,0 +1,2 @@
+# The core toolkit uses only Python's standard library.
+# pytest>=7.0  # required only for running tests
