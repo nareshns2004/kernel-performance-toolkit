@@ -1,0 +1,85 @@
+{
+  "perf": {
+    "cycles": 1000000.0,
+    "instructions": 2500000.0,
+    "cache-references": 20000.0,
+    "cache-misses": 1000.0,
+    "context-switches": 120.0,
+    "cpu-migrations": 4.0,
+    "minor-faults": 80.0,
+    "major-faults": 2.0,
+    "task-clock": 150.0
+  },
+  "cache": {
+    "caches": [],
+    "available": true,
+    "ipc": 2.5,
+    "llc_miss_ratio": 0.05,
+    "llc_mpki": 0.4,
+    "branch_miss_ratio": null,
+    "branch_mpki": null,
+    "l1d_miss_ratio": null,
+    "dtlb_miss_ratio": null,
+    "dtlb_mpki": null,
+    "backend_stall_frac": null,
+    "frontend_stall_frac": null,
+    "min_running_frac": 1.0
+  },
+  "findings": [
+    {
+      "id": "cache.efficient",
+      "domain": "cache",
+      "severity": "info",
+      "title": "IPC 2.50: the core pipeline is well utilised",
+      "evidence": {
+        "ipc": 2.5
+      },
+      "recommendation": "Gains now come from doing less work (algorithms, vectorisation), not from memory layout.",
+      "why": ""
+    }
+  ],
+  "software": {
+    "task-clock": 150.0,
+    "context-switches": 120.0,
+    "cpu-migrations": 4.0,
+    "minor-faults": 80.0,
+    "major-faults": 2.0
+  },
+  "vmstat": {
+    "r": 1.0,
+    "b": 0.0,
+    "swpd": 0.0,
+    "free": 100000.0,
+    "buff": 20000.0,
+    "cache": 300000.0,
+    "si": 0.0,
+    "so": 0.0,
+    "bi": 1.0,
+    "bo": 2.0,
+    "in": 100.0,
+    "cs": 120.0,
+    "us": 10.0,
+    "sy": 2.0,
+    "id": 88.0,
+    "wa": 0.0,
+    "st": 0.0
+  },
+  "numastat": {
+    "numa_hit": {
+      "node0": 10000.0,
+      "node1": 9000.0,
+      "total": 19000.0
+    },
+    "numa_miss": {
+      "node0": 100.0,
+      "node1": 300.0,
+      "total": 400.0
+    },
+    "numa_foreign": {
+      "node0": 0.0,
+      "node1": 0.0,
+      "total": 0.0
+    }
+  },
+  "policy_miss_frac": 0.020618556701030927
+}

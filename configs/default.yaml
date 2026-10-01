@@ -1,9 +1,0 @@
-events:
-  - cycles
-  - instructions
-  - cache-references
-  - cache-misses
-  - context-switches
-  - cpu-migrations
-  - page-faults
-duration_seconds: 10
