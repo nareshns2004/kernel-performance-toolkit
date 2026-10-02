@@ -1,0 +1,11 @@
+{
+  "cpu_psi_some_warn": 0.10,
+  "runq_wait_share_warn": 0.10,
+  "involuntary_switch_rate_warn": 1000,
+  "major_fault_rate_warn": 10,
+  "remote_alloc_warn": 0.10,
+  "numa_placement_mismatch_warn": 0.30,
+  "llc_mpki_warn": 5.0,
+  "dtlb_miss_warn": 0.01,
+  "thp_fallback_warn": 0.20
+}

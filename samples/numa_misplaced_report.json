@@ -1,0 +1,627 @@
+{
+  "generated_at": 1790865497.7161434,
+  "meta": {
+    "tool": "kptk synth",
+    "host": "synthetic-2s",
+    "kernel": "6.8.0-synthetic",
+    "arch": "x86_64",
+    "interval_s": 1.0,
+    "pid": 4242,
+    "command": null,
+    "user_hz": 100,
+    "page_size": 4096,
+    "overruns": 0
+  },
+  "topology": {
+    "cpus": 32,
+    "packages": 2,
+    "physical_cores": 16,
+    "smt": true,
+    "numa_nodes": 2,
+    "node_cpus": {
+      "0": "0-7,16-23",
+      "1": "8-15,24-31"
+    },
+    "distances": {
+      "0": [
+        10,
+        21
+      ],
+      "1": [
+        21,
+        10
+      ]
+    },
+    "caches": [
+      {
+        "level": 1,
+        "type": "Data",
+        "size_kib": 48,
+        "shared_by_cpus": 2,
+        "instances": 16
+      },
+      {
+        "level": 1,
+        "type": "Instruction",
+        "size_kib": 32,
+        "shared_by_cpus": 2,
+        "instances": 16
+      },
+      {
+        "level": 2,
+        "type": "Unified",
+        "size_kib": 2048,
+        "shared_by_cpus": 2,
+        "instances": 16
+      },
+      {
+        "level": 3,
+        "type": "Unified",
+        "size_kib": 32768,
+        "shared_by_cpus": 16,
+        "instances": 2
+      }
+    ],
+    "governors": [
+      "performance"
+    ]
+  },
+  "metrics": {
+    "cpu": {
+      "utilization": 0.4,
+      "user_frac": 0.32,
+      "system_frac": 0.08,
+      "iowait_frac": 0.0,
+      "steal_frac": 0.0,
+      "softirq_frac": 0.0,
+      "irq_frac": 0.0,
+      "per_cpu_utilization": {
+        "0": 0.4,
+        "1": 0.4,
+        "2": 0.4,
+        "3": 0.4,
+        "4": 0.4,
+        "5": 0.4,
+        "6": 0.4,
+        "7": 0.4,
+        "8": 0.4,
+        "9": 0.4,
+        "10": 0.4,
+        "11": 0.4,
+        "12": 0.4,
+        "13": 0.4,
+        "14": 0.4,
+        "15": 0.4,
+        "16": 0.4,
+        "17": 0.4,
+        "18": 0.4,
+        "19": 0.4,
+        "20": 0.4,
+        "21": 0.4,
+        "22": 0.4,
+        "23": 0.4,
+        "24": 0.4,
+        "25": 0.4,
+        "26": 0.4,
+        "27": 0.4,
+        "28": 0.4,
+        "29": 0.4,
+        "30": 0.4,
+        "31": 0.4
+      },
+      "context_switches_per_s": 50000.0,
+      "procs_running_mean": 13.0,
+      "procs_running_per_cpu": 0.40625,
+      "per_cpu_spread": 0.0,
+      "runq_waiting_tasks_avg": 0.05,
+      "runq_wait_per_timeslice_ms": 0.0015625,
+      "runq_waiting_tasks_per_cpu": {
+        "0": 0.002,
+        "1": 0.002,
+        "2": 0.002,
+        "3": 0.002,
+        "4": 0.002,
+        "5": 0.002,
+        "6": 0.002,
+        "7": 0.002,
+        "8": 0.002,
+        "9": 0.002,
+        "10": 0.002,
+        "11": 0.002,
+        "12": 0.002,
+        "13": 0.002,
+        "14": 0.002,
+        "15": 0.002,
+        "16": 0.002,
+        "17": 0.002,
+        "18": 0.002,
+        "19": 0.002,
+        "20": 0.002,
+        "21": 0.002,
+        "22": 0.002,
+        "23": 0.002,
+        "24": 0.002,
+        "25": 0.002,
+        "26": 0.002,
+        "27": 0.002,
+        "28": 0.002,
+        "29": 0.002,
+        "30": 0.002,
+        "31": 0.002
+      },
+      "psi_cpu_some": 0.01,
+      "process_comm": "pgdb",
+      "process_threads": 32,
+      "process_cpus_used": 4.0,
+      "process_system_frac": 0.15,
+      "process_cpus_seen": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "process_node_residency": {
+        "0": 1.0
+      },
+      "process_runq_wait_share": 0.0199999999853,
+      "process_runq_wait_per_slice_ms": 0.0163265306,
+      "process_voluntary_switches_per_s": 2000.0,
+      "process_involuntary_switches_per_s": 100.0,
+      "process_cpus_allowed": "0-31"
+    },
+    "memory": {
+      "faults_per_s": 20000.0,
+      "major_faults_per_s": 0.0,
+      "swap_pages_per_s": 0.0,
+      "direct_reclaim_stalls_per_s": 0.0,
+      "pgscan_direct_per_s": 0.0,
+      "pgscan_kswapd_per_s": 0.0,
+      "oom_kills": 0,
+      "workingset_refault_per_s": 0.0,
+      "mem_total_kib": 134217728,
+      "mem_available_min_frac": 0.25849999487400055,
+      "psi_memory_some": 0.0,
+      "psi_memory_full": 0.0,
+      "process_minor_faults_per_s": 2000.0,
+      "process_major_faults_per_s": 0.0,
+      "process_rss_kib": 50331648,
+      "process_anon_kib": 50331648,
+      "process_swap_kib": 0
+    },
+    "numa": {
+      "nodes": 2,
+      "distances": {
+        "0": [
+          10,
+          21
+        ],
+        "1": [
+          21,
+          10
+        ]
+      },
+      "applicable": true,
+      "remote_alloc_frac": 0.35,
+      "policy_miss_frac": 0.0,
+      "per_node_alloc": {
+        "0": {
+          "local": 162500,
+          "other": 87500,
+          "miss": 0
+        },
+        "1": {
+          "local": 162500,
+          "other": 87500,
+          "miss": 0
+        }
+      },
+      "numa_balancing": "1",
+      "hint_fault_local_frac": 0.25,
+      "pages_migrated_per_s": 0.0,
+      "node_free_frac": {
+        "0": 0.45,
+        "1": 0.02
+      },
+      "process_memory_by_node": {
+        "0": 0.15,
+        "1": 0.85
+      },
+      "process_memory_policies": {
+        "default": 2
+      },
+      "process_expected_distance": 19.35,
+      "process_remote_access_frac_est": 0.85,
+      "process_placement_mismatch": 0.85
+    },
+    "cache": {
+      "caches": [
+        {
+          "level": 1,
+          "type": "Data",
+          "size_kib": 48,
+          "shared_by_cpus": 2
+        },
+        {
+          "level": 1,
+          "type": "Instruction",
+          "size_kib": 32,
+          "shared_by_cpus": 2
+        },
+        {
+          "level": 2,
+          "type": "Unified",
+          "size_kib": 2048,
+          "shared_by_cpus": 2
+        },
+        {
+          "level": 3,
+          "type": "Unified",
+          "size_kib": 32768,
+          "shared_by_cpus": 16
+        }
+      ],
+      "available": true,
+      "ipc": 0.6,
+      "llc_miss_ratio": 0.4777777777777778,
+      "llc_mpki": 17.916666666666668,
+      "branch_miss_ratio": 0.005,
+      "branch_mpki": 0.8333333333333334,
+      "l1d_miss_ratio": null,
+      "dtlb_miss_ratio": 0.03,
+      "dtlb_mpki": 10.0,
+      "backend_stall_frac": null,
+      "frontend_stall_frac": null,
+      "min_running_frac": 1.0
+    },
+    "hugepages": {
+      "thp_enabled": "always",
+      "thp_defrag": "always",
+      "khugepaged_max_ptes_none": "511",
+      "thp_fault_alloc_per_s": 50.0,
+      "thp_fallback_frac": 0.4444444444444444,
+      "thp_collapse_per_s": 0.0,
+      "thp_split_per_s": 0.0,
+      "compact_stall_per_s": 12.0,
+      "compact_fail_frac": 0.5,
+      "hugetlb_pools": {
+        "2048": {
+          "nr_hugepages": 2048,
+          "free_hugepages": 2048,
+          "resv_hugepages": 0,
+          "surplus_hugepages": 0
+        }
+      },
+      "anon_huge_kib_system": 0,
+      "process_anon_kib": 50331648,
+      "process_thp_coverage": 0.03999998172124227,
+      "process_hugetlb_kib": 0
+    },
+    "config": {
+      "swappiness": "60",
+      "zone_reclaim_mode": "0",
+      "numa_balancing": "1",
+      "perf_event_paranoid": "2",
+      "governors": [
+        "performance"
+      ]
+    }
+  },
+  "use": [
+    {
+      "resource": "CPU",
+      "utilization": 0.4,
+      "saturation": {
+        "psi_some": 0.01,
+        "runq_waiting_tasks": 0.05
+      },
+      "errors": {
+        "steal_frac": 0.0
+      }
+    },
+    {
+      "resource": "Memory capacity",
+      "utilization": 0.7415000051259995,
+      "saturation": {
+        "psi_some": 0.0,
+        "direct_reclaim_per_s": 0.0,
+        "swap_pages_per_s": 0.0
+      },
+      "errors": {
+        "oom_kills": 0
+      }
+    },
+    {
+      "resource": "NUMA interconnect",
+      "utilization": 0.35,
+      "saturation": {
+        "pages_migrated_per_s": 0.0
+      },
+      "errors": {
+        "policy_miss_frac": 0.0
+      }
+    },
+    {
+      "resource": "Huge pages",
+      "utilization": 0.03999998172124227,
+      "saturation": {
+        "compact_stall_per_s": 12.0
+      },
+      "errors": {
+        "thp_fallback_frac": 0.4444444444444444
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "numa.process_misplaced",
+      "domain": "numa",
+      "severity": "critical",
+      "title": "About 85% of the process's memory accesses are likely remote: threads ran mostly on node 0, memory sits mostly on node 1",
+      "evidence": {
+        "cpu_node_residency": {
+          "0": 1.0
+        },
+        "memory_by_node": {
+          "0": 0.15,
+          "1": 0.85
+        },
+        "placement_mismatch": 0.85,
+        "expected_slit_distance": 19.35
+      },
+      "recommendation": "Start it with numactl --cpunodebind=1 --membind=1, or migratepages 4242 1 0.",
+      "why": "Typical cause: memory was first-touched by an initialisation thread on one node, then worker threads were scheduled on another."
+    },
+    {
+      "id": "cache.memory_bound",
+      "domain": "cache",
+      "severity": "warning",
+      "title": "Likely memory-bound: IPC 0.60, LLC 17.9 misses per 1k instructions; anonymous working set 49152 MiB vs 32 MiB L3",
+      "evidence": {
+        "ipc": 0.6,
+        "llc_mpki": 17.9167,
+        "llc_miss_ratio": 0.4778
+      },
+      "recommendation": "Improve locality: tile or block loops to fit the LLC, use struct-of-arrays for scanned fields, prefer contiguous containers over pointer-chasing, and prefetch for irregular access.",
+      "why": "Low IPC together with many LLC misses means the core is waiting on DRAM. Top-down analysis (perf stat --topdown) can confirm it on supported CPUs."
+    },
+    {
+      "id": "cache.tlb_pressure",
+      "domain": "cache",
+      "severity": "warning",
+      "title": "dTLB miss rate 3.0% (10.00 per 1k instructions): page walks are significant",
+      "evidence": {
+        "dtlb_miss_ratio": 0.03
+      },
+      "recommendation": "Back the hot heap with huge pages (madvise(MADV_HUGEPAGE), THP, or hugetlbfs). A 2 MiB page covers 512x the reach of a 4 KiB TLB entry. See the hugepages findings.",
+      "why": "With a few thousand TLB entries x 4 KiB, reach is only a few MiB; larger random-access working sets miss constantly."
+    },
+    {
+      "id": "hp.sync_compaction",
+      "domain": "hugepages",
+      "severity": "warning",
+      "title": "THP enabled=always with defrag=always: page faults may stall on synchronous compaction",
+      "evidence": {
+        "enabled": "always",
+        "defrag": "always"
+      },
+      "recommendation": "Use defrag=defer+madvise: background compaction for everyone, synchronous only for regions that asked with MADV_HUGEPAGE.",
+      "why": "Under fragmentation every anonymous fault can enter direct compaction, a classic source of multi-ms latency spikes in databases and JVMs."
+    },
+    {
+      "id": "hp.thp_fallback",
+      "domain": "hugepages",
+      "severity": "warning",
+      "title": "44% of huge-page faults fell back to 4 KiB pages",
+      "evidence": {
+        "thp_fault_alloc": 500,
+        "thp_fault_fallback": 400
+      },
+      "recommendation": "Physical memory is fragmented. Reserve hugetlbfs pages at boot for critical workloads, raise vm.min_free_kbytes, or trigger compaction off-peak (echo 1 > /proc/sys/vm/compact_memory).",
+      "why": ""
+    },
+    {
+      "id": "hp.compaction_stalls",
+      "domain": "hugepages",
+      "severity": "warning",
+      "title": "12.0 direct compaction stalls/s",
+      "evidence": {
+        "compact_stall_per_s": 12.0,
+        "compact_fail_frac": 0.5
+      },
+      "recommendation": "Tasks are compacting memory synchronously to get contiguous pages. Prefer THP defrag=defer+madvise and keep free-memory headroom.",
+      "why": ""
+    },
+    {
+      "id": "hp.low_coverage",
+      "domain": "hugepages",
+      "severity": "warning",
+      "title": "Only 4% of the process's 49152 MiB anonymous memory is backed by huge pages and dTLB miss rate is 3.0%",
+      "evidence": {
+        "anon_kib": 50331648,
+        "anon_huge_kib": 2013265,
+        "thp_enabled": "always"
+      },
+      "recommendation": "Try enabling THP (or hugetlbfs for predictable latency). For jemalloc/tcmalloc there are allocator options to request huge pages. Measure: the benefit depends on random-access TLB pressure.",
+      "why": ""
+    },
+    {
+      "id": "numa.remote_alloc",
+      "domain": "numa",
+      "severity": "warning",
+      "title": "35% of page allocations landed on a node other than the allocating CPU's",
+      "evidence": {
+        "remote_alloc_frac": 0.35,
+        "policy_miss_frac": 0
+      },
+      "recommendation": "Bind CPU and memory together (numactl --cpunodebind=N --membind=N, or cpuset.mems) and check for interleave or preferred policies set by the runtime.",
+      "why": "Remote DRAM costs roughly 1.3-2x local latency and shares inter-socket link bandwidth."
+    },
+    {
+      "id": "numa.access_locality",
+      "domain": "numa",
+      "severity": "warning",
+      "title": "Only 25% of sampled memory accesses were node-local (AutoNUMA hinting faults)",
+      "evidence": {
+        "hint_faults": 400000,
+        "local": 100000
+      },
+      "recommendation": "Threads and their data are on different nodes. Partition data per node, or pin threads to the node holding their memory.",
+      "why": ""
+    },
+    {
+      "id": "numa.node_exhausted",
+      "domain": "numa",
+      "severity": "warning",
+      "title": "Node 1 is nearly full (2.0% free): new allocations will spill to node(s) [0] or trigger reclaim",
+      "evidence": {
+        "node": 1,
+        "free_frac": 0.02,
+        "zone_reclaim_mode": "0"
+      },
+      "recommendation": "Rebalance placement or interleave large shared buffers. With zone_reclaim_mode=0 (default) the kernel goes remote rather than reclaim locally.",
+      "why": ""
+    },
+    {
+      "id": "hp.hugetlb_idle",
+      "domain": "hugepages",
+      "severity": "info",
+      "title": "4 GiB of 2 MiB hugetlb pages are reserved in the pool but unused",
+      "evidence": {
+        "page_size_kib": 2048,
+        "nr": 2048,
+        "free": 2048,
+        "reserved": 0
+      },
+      "recommendation": "hugetlb pages are unavailable to the rest of the system. Shrink vm.nr_hugepages, or confirm the consumer (DPDK, a DB) starts later.",
+      "why": ""
+    }
+  ],
+  "counters": {
+    "cycles": {
+      "value": 40000000000.0,
+      "raw": 40000000000,
+      "running_frac": 1.0
+    },
+    "instructions": {
+      "value": 24000000000.0,
+      "raw": 24000000000,
+      "running_frac": 1.0
+    },
+    "cache-references": {
+      "value": 900000000.0,
+      "raw": 900000000,
+      "running_frac": 1.0
+    },
+    "cache-misses": {
+      "value": 430000000.0,
+      "raw": 430000000,
+      "running_frac": 1.0
+    },
+    "branches": {
+      "value": 4000000000.0,
+      "raw": 4000000000,
+      "running_frac": 1.0
+    },
+    "branch-misses": {
+      "value": 20000000.0,
+      "raw": 20000000,
+      "running_frac": 1.0
+    },
+    "dTLB-loads": {
+      "value": 8000000000.0,
+      "raw": 8000000000,
+      "running_frac": 1.0
+    },
+    "dTLB-load-misses": {
+      "value": 240000000.0,
+      "raw": 240000000,
+      "running_frac": 1.0
+    }
+  },
+  "timeseries": {
+    "t": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0
+    ],
+    "cpu_util": [
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4
+    ],
+    "runq_waiting": [
+      0.05,
+      0.05,
+      0.05,
+      0.05,
+      0.05,
+      0.05,
+      0.05,
+      0.05,
+      0.05,
+      0.05
+    ],
+    "faults_per_s": [
+      20000.0,
+      20000.0,
+      20000.0,
+      20000.0,
+      20000.0,
+      20000.0,
+      20000.0,
+      20000.0,
+      20000.0,
+      20000.0
+    ],
+    "major_faults_per_s": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "psi_mem_some": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "data_quality": {
+    "samples": 11,
+    "duration_s": 10.0,
+    "mean_sample_cost_ms": 0.4,
+    "overruns": 0,
+    "missing": [],
+    "process_samples": 11
+  }
+}
