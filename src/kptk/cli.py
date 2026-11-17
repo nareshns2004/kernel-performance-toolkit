@@ -159,8 +159,12 @@ def cmd_compare(args: argparse.Namespace) -> int:
 
     before = [json.loads(Path(p).read_text()) for p in args.before]
     after = [json.loads(Path(p).read_text()) for p in args.after]
-    changes = compare(before, after, args.min_change, all_metrics=args.all)
-    print(to_markdown(changes, len(before), len(after)))
+    primary = tuple(m for arg in args.primary for m in arg.split(",") if m)
+    changes = compare(before, after, args.min_change, args.alpha, all_metrics=args.all, primary=primary, fdr=not args.no_fdr)
+    unknown = set(primary) - {c.metric for c in changes}
+    if unknown:
+        print(f"warning: --primary metric(s) not found in every report: {', '.join(sorted(unknown))}", file=sys.stderr)
+    print(to_markdown(changes, len(before), len(after), args.alpha))
     return 3 if args.fail_on_regression and any(c.verdict.startswith("regressed") for c in changes) else 0
 
 
@@ -237,6 +241,14 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--before", nargs="+", required=True)
     sp.add_argument("--after", nargs="+", required=True)
     sp.add_argument("--min-change", type=float, default=0.05)
+    sp.add_argument("--alpha", type=float, default=0.05)
+    sp.add_argument(
+        "--primary",
+        action="append",
+        default=[],
+        help="metric(s) declared before the experiment (e.g. cpu.process_runq_wait_share); tested at alpha without multiple-comparison correction",
+    )
+    sp.add_argument("--no-fdr", action="store_true", help="judge every metric on its raw p-value (no Benjamini-Hochberg correction)")
     sp.add_argument("--all", action="store_true", help="compare every numeric metric, not just the key ones")
     sp.add_argument("--fail-on-regression", action="store_true")
     sp.set_defaults(func=cmd_compare)

@@ -4,7 +4,7 @@ import pytest
 
 from kptk.analysis.engine import analyze
 from kptk.analysis.findings import Thresholds
-from kptk.compare import compare, permutation_p
+from kptk.compare import benjamini_hochberg, compare, min_achievable_p, permutation_p, to_markdown
 from kptk.synth import scenario
 
 EXPECTED = {
@@ -120,13 +120,79 @@ def test_permutation_test() -> None:
     assert permutation_p([1.0, 2.0, 1.5], [1.1, 1.9, 1.4]) > 0.5
 
 
-def test_compare_flags_regression_with_significance() -> None:
-    before = [analyze(scenario("healthy", proc_runq_wait_share=x)) for x in (0.02, 0.021, 0.019, 0.02)]
-    after = [analyze(scenario("healthy", proc_runq_wait_share=x)) for x in (0.08, 0.081, 0.079, 0.08)]
-    changes = {c.metric: c for c in compare(before, after)}
+def _runs(n: int, centre: float, seed: int = 0) -> list[dict]:
+    """n reports whose runq-wait share sits at ``centre``.
+
+    Other metrics get run-to-run noise; the same seed on both sides makes them noisy
+    (so they enter the BH family) but identically distributed by construction.
+    """
+    import random
+
+    rng = random.Random(seed)
+    jitter = (0.0, 0.001, -0.001, 0.0005, -0.0005, 0.0002, -0.0002, 0.0003)
+
+    def noise(x: float) -> float:
+        return x * rng.uniform(0.9, 1.1)
+
+    return [
+        analyze(
+            scenario(
+                "healthy",
+                proc_runq_wait_share=centre + jitter[i],
+                cpu_util=noise(0.4),
+                psi_cpu_some=noise(0.01),
+                runq_waiting_tasks=noise(0.05),
+                faults_per_s=noise(20_000),
+                proc_minflt_per_s=noise(2_000),
+                proc_vol_cs_per_s=noise(2_000),
+                proc_invol_cs_per_s=noise(100),
+                remote_alloc_frac=noise(0.02),
+            )
+        )
+        for i in range(n)
+    ]
+
+
+def test_compare_primary_metric_is_tested_at_alpha() -> None:
+    changes = {c.metric: c for c in compare(_runs(5, 0.02), _runs(5, 0.08), primary=("cpu.process_runq_wait_share",))}
     c = changes["cpu.process_runq_wait_share"]
-    assert c.verdict == "regressed" and c.p_value is not None and c.p_value < 0.05
-    assert changes["cpu.utilization"].verdict == "no significant change"
+    assert c.primary and c.verdict == "regressed" and c.p_value is not None and c.p_value < 0.05
+    assert not [c for c in changes.values() if c.verdict in ("regressed", "improved") and not c.primary]
+
+
+def test_compare_three_runs_is_inconclusive_not_no_change() -> None:
+    # A3: with 3 per side the smallest possible p is 0.10, so a real 4x change can't be significant.
+    c = {c.metric: c for c in compare(_runs(3, 0.02), _runs(3, 0.08), primary=("cpu.process_runq_wait_share",))}
+    assert c["cpu.process_runq_wait_share"].p_value == pytest.approx(0.10)
+    assert c["cpu.process_runq_wait_share"].verdict == "inconclusive (too few runs)"
+
+
+def test_compare_exploratory_metrics_need_fdr_power() -> None:
+    # A4: the same change, undeclared, competes with the other metrics under Benjamini-Hochberg.
+    five = {c.metric: c for c in compare(_runs(5, 0.02), _runs(5, 0.08))}["cpu.process_runq_wait_share"]
+    assert five.q_value is not None and five.q_value > 0.05 and five.verdict == "inconclusive (too few runs)"
+    seven = {c.metric: c for c in compare(_runs(7, 0.02), _runs(7, 0.08))}["cpu.process_runq_wait_share"]
+    assert seven.q_value is not None and seven.q_value < 0.05 and seven.verdict == "regressed"
+    raw = {c.metric: c for c in compare(_runs(5, 0.02), _runs(5, 0.08), fdr=False)}["cpu.process_runq_wait_share"]
+    assert raw.verdict == "regressed"
+
+
+def test_min_achievable_p_matches_permutation_floor() -> None:
+    for n, floor in ((2, 1 / 3), (3, 0.10), (4, 2 / 70), (5, 2 / 252)):
+        assert min_achievable_p(n, n) == pytest.approx(floor)
+        assert permutation_p([float(i) for i in range(n)], [100.0 + i for i in range(n)]) == pytest.approx(floor)
+
+
+def test_benjamini_hochberg() -> None:
+    q = benjamini_hochberg({"a": 0.01, "b": 0.04, "c": 0.03, "d": 0.5})
+    assert q["a"] == pytest.approx(0.04) and q["b"] == pytest.approx(0.16 / 3) and q["c"] == pytest.approx(0.16 / 3) and q["d"] == 0.5
+
+
+def test_compare_markdown_states_power() -> None:
+    before, after = _runs(3, 0.02), _runs(3, 0.08)
+    md = to_markdown(compare(before, after), 3, 3)
+    assert "Minimum achievable p with 3 vs 3 runs: **0.1**" in md
+    assert "≥ 5 runs per side" in md and "≥ 3" not in md
 
 
 def test_compare_higher_is_better() -> None:

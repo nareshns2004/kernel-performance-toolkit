@@ -60,3 +60,14 @@ against live kernel output.
 uses a permutation test (exact for small n, distribution-free, stdlib-only) and requires both
 significance and a minimum effect size. With n=1 per side it explicitly refuses to call a
 result significant.
+
+**Revised (A3/A4).** Two weaknesses found in review: (1) an exact permutation test has a
+p-value floor of 2/C(2n, n), so with 3 runs per side (which the tool's hint used to
+recommend) nothing could ever be significant; (2) ~23 metrics tested at α = 0.05 expect one
+false positive per comparison. Now the report prints the floor, says `inconclusive` when it
+is above α, recommends ≥ 5 runs, and splits metrics into pre-declared `--primary` metrics
+(tested at α) and exploratory ones (Benjamini-Hochberg FDR). Pre-registration plus FDR was
+chosen over Bonferroni because the metrics are strongly correlated (e.g. faults/s and
+minor faults/s), where Bonferroni is needlessly conservative. Metrics constant across all
+runs are dropped from the family; that filter is invariant under relabelling, so it
+doesn't bias the permutation p-values.
