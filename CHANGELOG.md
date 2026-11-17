@@ -20,7 +20,7 @@ Rebuilt from the 0.1 text-to-JSON scaffold into a packaged toolkit (`kptk`).
 - Topology reconstruction (SMT, sockets, NUMA nodes, cache hierarchy).
 - Synthetic two-socket recordings (`kptk demo`) and a test suite asserting exact findings per scenario.
 - C microbenchmarks: pointer-chase latency (4K vs THP, NUMA), page-fault cost, wakeup latency, false sharing.
-- Docs: architecture, metric reference, kernel mechanics, workflows, design decisions, interview guide. CI workflow.
+- Docs: architecture, metric reference, kernel mechanics, workflows, design decisions. CI workflow.
 
 ### Changed
 - NUMA "remote" no longer uses `numa_miss` (a policy counter); locality uses

@@ -8,8 +8,11 @@ hyperthread). When more events are requested, the kernel time-slices them, and
 each counter reports ``time_enabled`` and ``time_running``. The estimated full count is
 ``value * enabled / running``, an extrapolation that assumes the workload is
 uniform over time. Grouped events are always scheduled together, so *ratios within a
-group* (IPC, miss rate) stay exact even under multiplexing. That's why
-:class:`CounterGroup` keeps leader-relative ratios in one group when it can.
+group* (IPC, miss rate) would stay exact even under multiplexing. Grouping is not used
+here: ``kptk profile`` needs ``inherit=1`` to follow every thread and child, and the
+kernel rejects ``PERF_FORMAT_GROUP`` reads on inherited events. So :class:`Counters`
+opens independent fds, cross-event ratios are estimates when multiplexed, and the
+report flags it (``cache.multiplexed``, from each event's ``running_frac``).
 
 Access is governed by ``/proc/sys/kernel/perf_event_paranoid`` (and
 CAP_PERFMON). Without CAP_PERFMON:

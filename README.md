@@ -102,7 +102,7 @@ src/kptk/
   report.py · cli.py
 benchmarks/c/     mem_latency · page_fault_cost · wakeup_latency · false_sharing
 samples/          real laptop recording, synthetic scenario, v0.1 text inputs, generated reports
-docs/             architecture · metrics · linux-performance · examples · design-decisions · interview-guide
+docs/             architecture · metrics · linux-performance · examples · design-decisions
 ```
 
 ## Requirements and permissions
