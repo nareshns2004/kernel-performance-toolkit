@@ -111,10 +111,10 @@ def timeseries(rec: Recording) -> dict[str, list[float | None]]:
     """Per-interval rates for the report's sparklines."""
     out: dict[str, list[float | None]] = {"t": [], "cpu_util": [], "runq_waiting": [], "faults_per_s": [], "major_faults_per_s": [], "psi_mem_some": []}
     for a, b in zip(rec.samples, rec.samples[1:], strict=False):
-        dt = b.ts - a.ts
+        dt = b.t - a.t
         if dt <= 0:
             continue
-        out["t"].append(round(b.ts - rec.samples[0].ts, 3))
+        out["t"].append(round(b.t - rec.samples[0].t, 3))
         util = rq = faults = majf = psim = None
         if "/proc/stat" in a.files and "/proc/stat" in b.files:
             sa, sb = parse_proc_stat(a.files["/proc/stat"]), parse_proc_stat(b.files["/proc/stat"])

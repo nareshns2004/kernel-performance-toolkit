@@ -71,3 +71,12 @@ chosen over Bonferroni because the metrics are strongly correlated (e.g. faults/
 minor faults/s), where Bonferroni is needlessly conservative. Metrics constant across all
 runs are dropped from the family; that filter is invariant under relabelling, so it
 doesn't bias the permutation p-values.
+
+## ADR-11: Two clocks per sample
+**Decision.** Each sample stores wall time (`ts`) and `CLOCK_MONOTONIC` (`mono`); every rate
+divides by Δmono. **Why.** The first version divided by Δ`time.time()`. An NTP step (or a
+manual `date -s`) mid-recording would then corrupt every rate, or make Δt negative.
+`CLOCK_MONOTONIC` can be slewed by NTP but never stepped. Wall time is kept for display and
+for lining up with application logs. Older recordings without `mono` fall back to `ts`.
+`CLOCK_BOOTTIME` was not chosen because /proc CPU and scheduler counters also stop during
+suspend, so monotonic time matches them.

@@ -402,7 +402,7 @@ def recording(spec: Spec) -> Recording:
             files[f"/sys/devices/system/node/node{node}/meminfo"] = _meminfo(spec, f"Node {node} ", spec.mem_per_node_gib, spec.node_free_frac[node])
         if spec.pid:
             files.update(_pid_files(spec, t, i))
-        samples.append(Sample(1_700_000_000 + i * spec.interval_s, files, 0.0004))
+        samples.append(Sample(1_700_000_000 + i * spec.interval_s, files, 0.0004, mono=t))
     meta = {
         "tool": "kptk synth",
         "host": "synthetic-2s",
