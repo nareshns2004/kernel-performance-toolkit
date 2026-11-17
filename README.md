@@ -12,8 +12,8 @@ with evidence from kernel counters and a concrete fix.
 ```
 $ kptk demo numa_misplaced
 
-### 🔴 About 85% of the process's memory accesses are likely remote: threads ran mostly on node 0, memory sits mostly on node 1
-Evidence: `cpu_node_residency={0: 1}`, `memory_by_node={0: 0.15, 1: 0.85}`, `placement_mismatch=0.85`, `expected_slit_distance=19.4`
+### 🔴 About 82% of the process's memory accesses are likely remote: threads ran mostly on node 0, memory sits mostly on node 1
+Evidence: `cpu_node_residency={0: 0.95, 1: 0.05}`, `memory_by_node={0: 0.15, 1: 0.85}`, `placement_mismatch=0.8`, `expected_slit_distance=19`
 Action: Start it with numactl --cpunodebind=1 --membind=1, or migratepages 4242 1 0.
 
 ### 🟠 Likely memory-bound: IPC 0.60, LLC 17.9 misses per 1k instructions; anonymous working set 49152 MiB vs 32 MiB L3
@@ -131,7 +131,8 @@ make samples       # regenerate the sample reports
 
 - Counting, not sampling: no stacks or code attribution. Pair it with `perf record` or eBPF.
 - Generic PMU events give a coarse "top-down lite"; next is Intel topdown slots / AMD equivalents.
-- Process view is pid-level. Next: per-thread residency from `/proc/<pid>/task/*`.
+- NUMA residency is per thread (`/proc/<pid>/task/*/stat`, CPU-time weighted), capped at
+  `--max-threads` (default 256, lowest tids) per sample; the report says when the cap was hit.
 - Next: eBPF run-queue latency histograms, and cgroup v2 (`cpu.stat` throttling, per-cgroup PSI).
 
 ## License

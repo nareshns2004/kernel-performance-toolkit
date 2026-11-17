@@ -15,7 +15,8 @@ threads. Two better sources are:
 * AutoNUMA hinting faults (``numa_hint_faults`` / ``numa_hint_faults_local`` in
   /proc/vmstat): sampled real accesses, when ``kernel.numa_balancing=1``.
 * ``/proc/<pid>/numa_maps`` (where the pages live) compared with where the
-  process's threads actually ran (``/proc/<pid>/stat`` processor field). Combined
+  process's threads actually ran (per-thread ``/proc/<pid>/task/*/stat`` processor
+  field, weighted by each thread's CPU time; see :mod:`kptk.analysis.cpu`). Combined
   with the SLIT distance matrix, that gives a relative memory-access cost.
 """
 

@@ -52,9 +52,34 @@ def test_metrics_recover_synthetic_ground_truth() -> None:
     n = analyze(scenario("numa_misplaced"))["metrics"]
     assert n["numa"]["remote_alloc_frac"] == pytest.approx(0.35, abs=0.01)
     assert n["numa"]["hint_fault_local_frac"] == pytest.approx(0.25, abs=0.01)
-    assert n["numa"]["process_placement_mismatch"] == pytest.approx(0.85, abs=0.01)
+    # Exact ground truth: 0.5 * (|0.95 - 0.15| + |0.05 - 0.85|). Leader-only residency hit 0.85 by sampling noise.
+    assert n["numa"]["process_placement_mismatch"] == pytest.approx(0.80, abs=0.01)
     assert n["hugepages"]["thp_fallback_frac"] == pytest.approx(40 / 90, abs=0.01)
     assert n["cache"]["ipc"] == pytest.approx(0.6) and n["cache"]["llc_mpki"] == pytest.approx(17.92, abs=0.01)
+
+
+def test_numa_residency_follows_workers_not_idle_main_thread() -> None:
+    # A2: the main thread sleeps on node 1, all workers run on node 0 where the heap lives.
+    # Correct answer: well placed. Following /proc/<pid>/stat (the leader) blames node 1.
+    spec = {"cpu_node_residency": {0: 1.0}, "mem_by_node": {0: 0.9, 1: 0.1}, "main_thread_node": 1}
+    report = analyze(scenario("healthy", **spec))
+    cpu, numa = report["metrics"]["cpu"], report["metrics"]["numa"]
+    assert cpu["process_residency_source"] == "threads"
+    assert cpu["process_node_residency"] == {0: 1.0}
+    assert numa["process_placement_mismatch"] == pytest.approx(0.1, abs=0.01)
+    assert "numa.process_misplaced" not in {f["id"] for f in report["findings"]}
+
+    legacy = analyze(scenario("healthy", sampled_threads=0, **spec))
+    assert legacy["metrics"]["cpu"]["process_residency_source"] == "main_thread"
+    assert legacy["metrics"]["cpu"]["process_node_residency"] == {1: 1.0}
+    assert "numa.process_misplaced" in {f["id"] for f in legacy["findings"]}
+    assert any("main thread only" in m for m in legacy["data_quality"]["missing"])
+
+
+def test_thread_cap_is_reported() -> None:
+    rec = scenario("healthy")
+    rec.meta["max_threads"] = 4
+    assert any("only the 4 lowest tids" in m for m in analyze(rec)["data_quality"]["missing"])
 
 
 def test_spread_process_with_spread_memory_is_not_misplaced() -> None:

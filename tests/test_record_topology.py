@@ -55,3 +55,30 @@ def test_topology_from_synthetic_two_socket() -> None:
 def test_topology_live_smoke() -> None:
     topo = from_static(Recorder().capture_static())
     assert topo.cpus and topo.nodes
+
+
+def test_recorder_reads_thread_stats_capped_by_numeric_tid() -> None:
+    files = {"/proc/7/stat": "x"} | {f"/proc/7/task/{tid}/stat": str(tid) for tid in (7, 9, 10, 100)}
+    rec = Recorder(DictSource(files), interval_s=0.001, pid=7, max_threads=3).run(max_samples=2)
+    tasks = sorted(p for p in rec.samples[0].files if "/task/" in p)
+    # numeric order, not lexicographic ("100" < "7"): keeps 7, 9, 10
+    assert tasks == ["/proc/7/task/10/stat", "/proc/7/task/7/stat", "/proc/7/task/9/stat"]
+    assert rec.meta["max_threads"] == 3
+    rec0 = Recorder(DictSource(files), interval_s=0.001, pid=7, max_threads=0).run(max_samples=1)
+    assert not [p for p in rec0.samples[0].files if "/task/" in p]
+
+
+def test_live_thread_stats_for_own_process() -> None:
+    import os
+    import threading
+
+    stop = threading.Event()
+    worker = threading.Thread(target=stop.wait)
+    worker.start()
+    try:
+        rec = Recorder(interval_s=0.01, pid=os.getpid()).run(max_samples=2)
+    finally:
+        stop.set()
+        worker.join()
+    tasks = [p for p in rec.samples[0].files if p.startswith(f"/proc/{os.getpid()}/task/")]
+    assert len(tasks) >= 2

@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from ..parsers.proc import busy_ticks, parse_pressure, parse_proc_stat, parse_schedstat, parse_vmstat, total_ticks
+from ..parsers.proc import busy_ticks, parse_pid_stat, parse_pressure, parse_proc_stat, parse_schedstat, parse_vmstat, total_ticks
 from ..parsers.tools import PerfStatEvent
 from ..record import Recording
 from ..topology import Topology, from_static
@@ -159,6 +159,14 @@ def data_quality(rec: Recording) -> dict[str, Any]:
             dq["missing"].append(f"pid {pid} exited or became unreadable after {len(alive)} samples")
         if not any(f"/proc/{pid}/numa_maps" in s.files for s in rec.samples):
             dq["missing"].append("numa_maps unreadable (permissions or short run): no per-process placement")
+        task_prefix = f"/proc/{pid}/task/"
+        if not any(p.startswith(task_prefix) for s in rec.samples for p in s.files):
+            dq["missing"].append("no per-thread stat files: NUMA residency follows the main thread only")
+        else:
+            cap = rec.meta.get("max_threads")
+            peak = max((parse_pid_stat(s.files[f"/proc/{pid}/stat"]).num_threads for s in alive), default=0)
+            if cap and peak > cap:
+                dq["missing"].append(f"process had up to {peak} threads; only the {cap} lowest tids were sampled for NUMA residency")
     return dq
 
 

@@ -13,6 +13,7 @@
   "cache": {
     "caches": [],
     "available": true,
+    "counted_scope": null,
     "ipc": 2.5,
     "llc_miss_ratio": 0.05,
     "llc_mpki": 0.4,

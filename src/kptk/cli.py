@@ -71,7 +71,7 @@ def cmd_inspect(args: argparse.Namespace) -> int:
 def cmd_record(args: argparse.Namespace) -> int:
     from .record import Recorder
 
-    rec_ = Recorder(interval_s=args.interval, pid=args.pid, slow_every=args.slow_every)
+    rec_ = Recorder(interval_s=args.interval, pid=args.pid, slow_every=args.slow_every, max_threads=args.max_threads)
     signal.signal(signal.SIGTERM, lambda *_: rec_.stop_event.set())
     print(f"recording every {args.interval}s for {args.duration}s" + (f" (pid {args.pid})" if args.pid else "") + f" -> {args.output}", file=sys.stderr)
     try:
@@ -200,6 +200,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("-i", "--interval", type=float, default=1.0)
     sp.add_argument("-p", "--pid", type=int, help="also record this process (stat, status, schedstat, numa_maps, smaps_rollup)")
     sp.add_argument("--slow-every", type=int, default=5, help="read page-table-walking files every N samples")
+    sp.add_argument("--max-threads", type=int, default=256, help="per-thread stat files to read per sample for --pid (lowest tids first; 0 = main thread only)")
     sp.add_argument("-o", "--output", default="recording.jsonl.gz")
     sp.set_defaults(func=cmd_record)
 

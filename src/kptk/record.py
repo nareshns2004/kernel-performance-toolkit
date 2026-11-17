@@ -10,6 +10,11 @@ the recording (see :mod:`kptk.analysis`).
 Expensive files (``numa_maps`` and ``smaps_rollup`` walk the target's page
 tables under its mmap lock) are read only every ``slow_every`` samples, so
 the recorder doesn't perturb the process it's watching.
+
+For a target process, every thread's ``/proc/<pid>/task/<tid>/stat`` is read
+too (up to ``max_threads``, lowest tids first): ``/proc/<pid>/stat`` reports only
+the thread-group leader's last CPU, and a server's main thread often sleeps on
+one node while its workers run on another.
 """
 
 from __future__ import annotations
@@ -77,6 +82,7 @@ DYNAMIC_PATTERNS = (
 
 PID_FAST = ("stat", "status", "schedstat")
 PID_SLOW = ("numa_maps", "smaps_rollup")
+DEFAULT_MAX_THREADS = 256
 
 
 class Source:
@@ -200,12 +206,14 @@ class Recorder:
         pid: int | None = None,
         slow_every: int = 5,
         clock: Callable[[], float] = time.time,
+        max_threads: int = DEFAULT_MAX_THREADS,
     ) -> None:
         self.source = source or LiveSource()
         self.interval_s = interval_s
         self.pid = pid
         self.slow_every = max(1, slow_every)
         self.clock = clock
+        self.max_threads = max(0, max_threads)
         self.stop_event = threading.Event()
         self.overruns = 0
         self._dynamic = expand(self.source, DYNAMIC_PATTERNS)
@@ -227,11 +235,19 @@ class Recorder:
             paths += [f"/proc/{self.pid}/{n}" for n in PID_FAST]
             if index % self.slow_every == 0:
                 paths += [f"/proc/{self.pid}/{n}" for n in PID_SLOW]
+            paths += self._task_stat_paths()
         for p in paths:
             text = self.source.read(p)
             if text is not None:
                 files[p] = text
         return Sample(ts, files, time.perf_counter() - t0)
+
+    def _task_stat_paths(self) -> list[str]:
+        if not self.max_threads:
+            return []
+        prefix = f"/proc/{self.pid}/task/"
+        tids = sorted(int(p[len(prefix) :].split("/", 1)[0]) for p in self.source.glob(prefix + "*/stat"))
+        return [f"{prefix}{tid}/stat" for tid in tids[: self.max_threads]]
 
     def meta(self, command: list[str] | None = None) -> dict[str, Any]:
         return {
@@ -245,6 +261,7 @@ class Recorder:
             "command": command,
             "user_hz": os.sysconf("SC_CLK_TCK"),
             "page_size": os.sysconf("SC_PAGE_SIZE"),
+            "max_threads": self.max_threads if self.pid else None,
         }
 
     def run(
