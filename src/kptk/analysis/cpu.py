@@ -13,6 +13,12 @@ behind it. Saturation is visible in three other places:
 For a single process, *involuntary* context switches (preempted while still
 runnable) point at CPU contention, and *voluntary* switches (blocked on
 I/O, a futex or sleep) point at blocking.
+
+Node residency (where the process's CPU time was spent, per NUMA node) is built
+per thread: between consecutive samples each thread's CPU-time delta is
+credited to the node of the CPU it last ran on (``/proc/<pid>/task/<tid>/stat``
+field 39). Using ``/proc/<pid>/stat`` alone would follow only the thread-group
+leader, which in a typical server sleeps while the workers do the work.
 """
 
 from __future__ import annotations
@@ -116,6 +122,41 @@ def analyze_cpu(w: Window, topo: Topology, th: Thresholds) -> DomainResult:
     return r
 
 
+def thread_node_residency(w: Window, pid: int, topo: Topology) -> tuple[dict[int, float] | None, set[int], int]:
+    """Share of the process's CPU time spent on each NUMA node, from per-thread stat files.
+
+    Returns ``(residency, cpus_seen, threads_seen)``; residency is None when the
+    recording has no task files or no thread accumulated CPU time in the window.
+    A thread's first appearance only sets its baseline, so threads created
+    mid-window are counted from their second sample onward.
+    """
+    prefix = f"/proc/{pid}/task/"
+    last_ticks: dict[str, int] = {}
+    by_node: Counter[int] = Counter()
+    cpus_seen: set[int] = set()
+    threads: set[str] = set()
+    for sample in w.rec.samples:
+        for path, text in sample.files.items():
+            if not (path.startswith(prefix) and path.endswith("/stat")):
+                continue
+            try:
+                st = parse_pid_stat(text)
+            except (ValueError, IndexError):
+                continue
+            threads.add(path)
+            ticks = st.utime + st.stime
+            prev = last_ticks.get(path)
+            last_ticks[path] = ticks
+            if prev is None or ticks <= prev:
+                continue
+            cpus_seen.add(st.processor)
+            by_node[topo.cpu_node.get(st.processor, 0)] += ticks - prev
+    total = sum(by_node.values())
+    if not total:
+        return None, cpus_seen, len(threads)
+    return {n: c / total for n, c in sorted(by_node.items())}, cpus_seen, len(threads)
+
+
 def _process(w: Window, topo: Topology, th: Thresholds, r: DomainResult) -> None:
     pid = w.rec.pid
     if not pid:
@@ -128,10 +169,18 @@ def _process(w: Window, topo: Topology, th: Thresholds, r: DomainResult) -> None
         m["process_threads"] = b.num_threads
         m["process_cpus_used"] = (b.utime + b.stime - a.utime - a.stime) / w.user_hz / dt
         m["process_system_frac"] = (b.stime - a.stime) / max(1, b.utime + b.stime - a.utime - a.stime)
-        cpus_seen = Counter(s.processor for _, s in w.series(f"/proc/{pid}/stat", parse_pid_stat))
-        nodes_seen = Counter(topo.cpu_node.get(c, 0) for c in cpus_seen.elements())
+        residency, cpus_seen, threads_seen = thread_node_residency(w, pid, topo)
+        if residency is not None:
+            m["process_residency_source"] = "threads"
+            m["process_threads_sampled"] = threads_seen
+        else:  # recording without task files (older kptk, or --max-threads 0): leader thread only
+            leader_cpus = Counter(s.processor for _, s in w.series(f"/proc/{pid}/stat", parse_pid_stat))
+            nodes_seen = Counter(topo.cpu_node.get(c, 0) for c in leader_cpus.elements())
+            residency = {n: c / sum(nodes_seen.values()) for n, c in sorted(nodes_seen.items())}
+            cpus_seen = set(leader_cpus)
+            m["process_residency_source"] = "main_thread"
         m["process_cpus_seen"] = sorted(cpus_seen)
-        m["process_node_residency"] = {n: round(c / sum(nodes_seen.values()), 3) for n, c in sorted(nodes_seen.items())}
+        m["process_node_residency"] = {n: round(f, 3) for n, f in sorted(residency.items())}
     st = w.pair(f"/proc/{pid}/schedstat", parse_task_schedstat)
     if st:
         a2, b2, _ = st

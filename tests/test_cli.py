@@ -74,3 +74,19 @@ def test_profile_short_command(tmp_path, capsys) -> None:
     rc = main(["profile", "-i", "0.05", "-o", str(rec), "--md", str(tmp_path / "p.md"), "--", sys.executable, "-c", "import time; time.sleep(0.3)"])
     assert rc == 0
     assert (tmp_path / "p.md").read_text().startswith("# Kernel performance report")
+
+
+def test_compare_cli_primary_and_power_hint(tmp_path, capsys) -> None:
+    from kptk.analysis.engine import analyze
+
+    paths = {"a": [], "b": []}
+    for side, share in (("a", 0.02), ("b", 0.08)):
+        for i in range(3):
+            p = tmp_path / f"{side}{i}.json"
+            p.write_text(json.dumps(analyze(scenario("healthy", proc_runq_wait_share=share + i * 1e-4)), default=str))
+            paths[side].append(str(p))
+    rc = main(["compare", "--before", *paths["a"], "--after", *paths["b"], "--primary", "cpu.process_runq_wait_share", "--fail-on-regression"])
+    out = capsys.readouterr().out
+    assert rc == 0  # 3 vs 3 can't be significant, so the gate must not fire on noise-level evidence
+    assert "inconclusive (too few runs)" in out and "**cpu.process_runq_wait_share**" in out
+    assert "≥ 5 runs per side" in out

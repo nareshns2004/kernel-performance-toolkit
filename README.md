@@ -12,8 +12,8 @@ with evidence from kernel counters and a concrete fix.
 ```
 $ kptk demo numa_misplaced
 
-### 🔴 About 85% of the process's memory accesses are likely remote: threads ran mostly on node 0, memory sits mostly on node 1
-Evidence: `cpu_node_residency={0: 1}`, `memory_by_node={0: 0.15, 1: 0.85}`, `placement_mismatch=0.85`, `expected_slit_distance=19.4`
+### 🔴 About 82% of the process's memory accesses are likely remote: threads ran mostly on node 0, memory sits mostly on node 1
+Evidence: `cpu_node_residency={0: 0.95, 1: 0.05}`, `memory_by_node={0: 0.15, 1: 0.85}`, `placement_mismatch=0.8`, `expected_slit_distance=19`
 Action: Start it with numactl --cpunodebind=1 --membind=1, or migratepages 4242 1 0.
 
 ### 🟠 Likely memory-bound: IPC 0.60, LLC 17.9 misses per 1k instructions; anonymous working set 49152 MiB vs 32 MiB L3
@@ -107,9 +107,16 @@ docs/             architecture · metrics · linux-performance · examples · de
 
 ## Requirements and permissions
 
-Linux, Python ≥ 3.10. Everything except hardware counters works unprivileged. Counters need
-`kernel.perf_event_paranoid ≤ 2` or `CAP_PERFMON`; without them the report says so and
-continues. Run-queue latency needs `CONFIG_SCHEDSTATS`; PSI needs `CONFIG_PSI`.
+Linux, Python ≥ 3.10. Everything except hardware counters works unprivileged. Hardware
+counters depend on `kernel.perf_event_paranoid` (or `CAP_PERFMON`):
+
+| paranoid | unprivileged counting of your own processes |
+|---|---|
+| ≤ 1 | user + kernel |
+| 2 | user space only: kptk retries with `exclude_kernel=1` and the report records `counted_scope: user` |
+| ≥ 3 (Ubuntu/Debian default 4) | none; the report says so and continues without counters |
+
+`CAP_PERFMON` (or root) always gets user + kernel. Run-queue latency needs `CONFIG_SCHEDSTATS`; PSI needs `CONFIG_PSI`.
 `scripts/setup_hugepages.sh` reserves hugetlb pages and requires root.
 
 ## Development
@@ -124,7 +131,8 @@ make samples       # regenerate the sample reports
 
 - Counting, not sampling: no stacks or code attribution. Pair it with `perf record` or eBPF.
 - Generic PMU events give a coarse "top-down lite"; next is Intel topdown slots / AMD equivalents.
-- Process view is pid-level. Next: per-thread residency from `/proc/<pid>/task/*`.
+- NUMA residency is per thread (`/proc/<pid>/task/*/stat`, CPU-time weighted), capped at
+  `--max-threads` (default 256, lowest tids) per sample; the report says when the cap was hit.
 - Next: eBPF run-queue latency histograms, and cgroup v2 (`cpu.stat` throttling, per-cgroup PSI).
 
 ## License

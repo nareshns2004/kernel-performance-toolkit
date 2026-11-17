@@ -20,7 +20,7 @@ def _ratio(a: float | None, b: float | None) -> float | None:
     return a / b if a is not None and b else None
 
 
-def analyze_cache(events: dict[str, dict[str, float]] | None, topo: Topology, th: Thresholds, anon_kib: int | None) -> DomainResult:
+def analyze_cache(events: dict[str, dict[str, float]] | None, topo: Topology, th: Thresholds, anon_kib: int | None, scope: str | None = None) -> DomainResult:
     r = DomainResult()
     m = r.metrics
     m["caches"] = [{"level": c.level, "type": c.type, "size_kib": c.size_bytes // 1024, "shared_by_cpus": len(c.shared_cpus)} for c in topo.caches]
@@ -32,10 +32,22 @@ def analyze_cache(events: dict[str, dict[str, float]] | None, topo: Topology, th
             Severity.INFO,
             "No hardware counters in this recording; cache and TLB efficiency can't be measured",
             {},
-            "Use `kptk profile -- <cmd>` with perf_event_paranoid <= 2 (or CAP_PERFMON), or pass `--perf-stat` with saved `perf stat -x;` output.",
+            "Use `kptk profile -- <cmd>` with perf_event_paranoid <= 2 (user-space only) or <= 1 / CAP_PERFMON (user+kernel), "
+            "or pass `--perf-stat` with saved `perf stat -x;` output.",
         )
         return r
     m["available"] = True
+    m["counted_scope"] = scope
+    if scope == "user":
+        r.add(
+            "cache.user_only",
+            "cache",
+            Severity.INFO,
+            "Hardware counters cover user space only; time in the kernel (syscalls, page faults, reclaim) is not counted",
+            {"counted_scope": scope},
+            "For user+kernel counts set perf_event_paranoid <= 1 for the session or grant CAP_PERFMON. Kernel-heavy workloads will show higher IPC here than reality.",
+            "At perf_event_paranoid=2 an unprivileged user may only count with exclude_kernel=1 (perf stat's implicit :u).",
+        )
 
     def v(name: str) -> float | None:
         e = events.get(name)

@@ -38,11 +38,20 @@ kptk analyze pg.jsonl.gz --md pg.md --json pg.json
 for i in 1 2 3 4 5; do kptk profile -i 0.25 --json before_$i.json --md /dev/null -- ./bench; done
 # apply change: numactl binding, THP mode, thread-pool size, ...
 for i in 1 2 3 4 5; do kptk profile -i 0.25 --json after_$i.json  --md /dev/null -- ./bench; done
-kptk compare --before before_*.json --after after_*.json --fail-on-regression
+kptk compare --before before_*.json --after after_*.json \
+  --primary numa.process_remote_access_frac_est --fail-on-regression
 ```
 
-Each metric gets a two-sided permutation test. "regressed" requires both p < 0.05 and a
-change of at least 5% (`--min-change`).
+Each metric gets a two-sided permutation test. "regressed" requires a change of at least 5%
+(`--min-change`) and significance:
+
+* `--primary` metrics (declare them *before* running: what the change is meant to move) are
+  tested at p < 0.05. With n runs per side the smallest possible p is 2/C(2n, n): 0.10 at
+  n=3, 0.029 at n=4, 0.008 at n=5. **Use at least 5 runs per side.**
+* Every other metric is exploratory and must pass Benjamini-Hochberg across the family
+  (q < 0.05), which typically needs 6-7 runs per side. `--no-fdr` turns the correction off.
+* When the run count makes significance impossible, the verdict is `inconclusive (too few
+  runs)`, not "no significant change". The report header prints the minimum achievable p.
 
 ## 5. CI performance gate
 

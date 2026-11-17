@@ -16,7 +16,7 @@ and how to read it. `Δx` is the change in a cumulative counter, `Δt` the elaps
 | `process_runq_wait_share` | `/proc/<pid>/schedstat` | Δwait / (Δwait + Δon_cpu) | Share of the process's runnable time spent waiting: its scheduler latency tax |
 | `process_involuntary_switches_per_s` | `/proc/<pid>/status` `nonvoluntary_ctxt_switches` | Δ / Δt | Preempted while runnable, so **CPU contention** |
 | `process_voluntary_switches_per_s` | `/proc/<pid>/status` `voluntary_ctxt_switches` | Δ / Δt | Blocked (I/O, futex, sleep), so **blocking/lock contention** |
-| `process_node_residency` | `/proc/<pid>/stat` field 39 (`processor`) per sample | histogram of CPU → node | Where the threads actually ran |
+| `process_node_residency` | `/proc/<pid>/task/<tid>/stat` field 39 (`processor`) and utime+stime, per thread per sample | Σ Δ(utime+stime) credited to the node of the thread's last CPU, normalised | Where the process's CPU time was actually spent. Falls back to the leader's `/proc/<pid>/stat` (`process_residency_source: main_thread`) for recordings without task files |
 
 ## Memory and page faults
 

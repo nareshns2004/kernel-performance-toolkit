@@ -6,9 +6,9 @@
 
 ## Findings
 
-### 🔴 About 85% of the process's memory accesses are likely remote: threads ran mostly on node 0, memory sits mostly on node 1
+### 🔴 About 82% of the process's memory accesses are likely remote: threads ran mostly on node 0, memory sits mostly on node 1
 
-Evidence: `cpu_node_residency={0: 1}`, `memory_by_node={0: 0.15, 1: 0.85}`, `placement_mismatch=0.85`, `expected_slit_distance=19.4`
+Evidence: `cpu_node_residency={0: 0.95, 1: 0.05}`, `memory_by_node={0: 0.15, 1: 0.85}`, `placement_mismatch=0.8`, `expected_slit_distance=19`
 
 _Why it matters:_ Typical cause: memory was first-touched by an initialisation thread on one node, then worker threads were scheduled on another.
 
@@ -125,6 +125,8 @@ mem pressure  ▁▁▁▁▁▁▁▁▁▁  max 0
 | process_threads | 32 |
 | process_cpus_used | 4 |
 | process_system_frac | 0.15 |
+| process_residency_source | threads |
+| process_threads_sampled | 8 |
 | process_runq_wait_share | 0.02 |
 | process_runq_wait_per_slice_ms | 0.0163 |
 | process_voluntary_switches_per_s | 2,000 |
@@ -168,9 +170,9 @@ mem pressure  ▁▁▁▁▁▁▁▁▁▁  max 0
 | numa_balancing | 1 |
 | hint_fault_local_frac | 0.25 |
 | pages_migrated_per_s | 0 |
-| process_expected_distance | 19.4 |
-| process_remote_access_frac_est | 0.85 |
-| process_placement_mismatch | 0.85 |
+| process_expected_distance | 19 |
+| process_remote_access_frac_est | 0.815 |
+| process_placement_mismatch | 0.8 |
 
 </details>
 

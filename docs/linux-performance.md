@@ -77,5 +77,8 @@ in bursts. `kptk` reports a USE row per resource, then domain findings.
   only within an event group.
 * Generic events (`cache-misses`) map to model-specific events, so compare values only on the
   same CPU model.
-* Access is gated by `kernel.perf_event_paranoid` (Ubuntu defaults to 4 = no unprivileged
-  access) or `CAP_PERFMON`.
+* Access is gated by `kernel.perf_event_paranoid` or `CAP_PERFMON`. Unprivileged: ≤ 1 allows
+  user + kernel counting of your own processes; **2 allows user space only** (opening an
+  event without `exclude_kernel=1` fails with `EACCES`, which is why `perf stat` silently
+  adds `:u`); ≥ 3 (Ubuntu's default 4) blocks it entirely. kptk retries user-only on
+  `EACCES` and records `counted_scope` in the report.

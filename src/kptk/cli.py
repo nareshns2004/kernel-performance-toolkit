@@ -71,7 +71,7 @@ def cmd_inspect(args: argparse.Namespace) -> int:
 def cmd_record(args: argparse.Namespace) -> int:
     from .record import Recorder
 
-    rec_ = Recorder(interval_s=args.interval, pid=args.pid, slow_every=args.slow_every)
+    rec_ = Recorder(interval_s=args.interval, pid=args.pid, slow_every=args.slow_every, max_threads=args.max_threads)
     signal.signal(signal.SIGTERM, lambda *_: rec_.stop_event.set())
     print(f"recording every {args.interval}s for {args.duration}s" + (f" (pid {args.pid})" if args.pid else "") + f" -> {args.output}", file=sys.stderr)
     try:
@@ -110,6 +110,8 @@ def cmd_profile(args: argparse.Namespace) -> int:
         rec.save(args.output)
     if rec.counters and rec.counters.get("error"):
         print(f"note: hardware counters unavailable: {rec.counters['error']}", file=sys.stderr)
+    elif rec.counters and rec.counters.get("counted_scope") == "user":
+        print("note: kernel-mode counting not permitted (perf_event_paranoid=2?); counters cover user space only", file=sys.stderr)
     if len(rec.samples) < 2:
         print("command finished before two samples were taken; lower --interval", file=sys.stderr)
         return rc or 1
@@ -157,8 +159,12 @@ def cmd_compare(args: argparse.Namespace) -> int:
 
     before = [json.loads(Path(p).read_text()) for p in args.before]
     after = [json.loads(Path(p).read_text()) for p in args.after]
-    changes = compare(before, after, args.min_change, all_metrics=args.all)
-    print(to_markdown(changes, len(before), len(after)))
+    primary = tuple(m for arg in args.primary for m in arg.split(",") if m)
+    changes = compare(before, after, args.min_change, args.alpha, all_metrics=args.all, primary=primary, fdr=not args.no_fdr)
+    unknown = set(primary) - {c.metric for c in changes}
+    if unknown:
+        print(f"warning: --primary metric(s) not found in every report: {', '.join(sorted(unknown))}", file=sys.stderr)
+    print(to_markdown(changes, len(before), len(after), args.alpha))
     return 3 if args.fail_on_regression and any(c.verdict.startswith("regressed") for c in changes) else 0
 
 
@@ -198,6 +204,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("-i", "--interval", type=float, default=1.0)
     sp.add_argument("-p", "--pid", type=int, help="also record this process (stat, status, schedstat, numa_maps, smaps_rollup)")
     sp.add_argument("--slow-every", type=int, default=5, help="read page-table-walking files every N samples")
+    sp.add_argument("--max-threads", type=int, default=256, help="per-thread stat files to read per sample for --pid (lowest tids first; 0 = main thread only)")
     sp.add_argument("-o", "--output", default="recording.jsonl.gz")
     sp.set_defaults(func=cmd_record)
 
@@ -234,6 +241,14 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--before", nargs="+", required=True)
     sp.add_argument("--after", nargs="+", required=True)
     sp.add_argument("--min-change", type=float, default=0.05)
+    sp.add_argument("--alpha", type=float, default=0.05)
+    sp.add_argument(
+        "--primary",
+        action="append",
+        default=[],
+        help="metric(s) declared before the experiment (e.g. cpu.process_runq_wait_share); tested at alpha without multiple-comparison correction",
+    )
+    sp.add_argument("--no-fdr", action="store_true", help="judge every metric on its raw p-value (no Benjamini-Hochberg correction)")
     sp.add_argument("--all", action="store_true", help="compare every numeric metric, not just the key ones")
     sp.add_argument("--fail-on-regression", action="store_true")
     sp.set_defaults(func=cmd_compare)

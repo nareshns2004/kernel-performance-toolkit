@@ -62,7 +62,12 @@ class Spec:
     proc_majflt_per_s: float = 0.0
     proc_anon_gib: float = 8.0
     proc_thp_coverage: float = 0.6
+    # Where the worker threads' CPU time goes. The leader (main) thread works like a
+    # worker unless main_thread_node is set: then it sleeps on that node, as a server's
+    # accept/main loop often does, and /proc/<pid>/stat's CPU field follows it.
     cpu_node_residency: dict[int, float] = field(default_factory=lambda: {0: 0.5, 1: 0.5})
+    main_thread_node: int | None = None
+    sampled_threads: int = 8  # task/<tid>/stat files generated (0 = none, like an old recording)
     mem_by_node: dict[int, float] = field(default_factory=lambda: {0: 0.5, 1: 0.5})
     # hardware counters (None = not collected)
     counters: dict[str, float] | None = None
@@ -234,20 +239,52 @@ def _numastat(s: Spec, t: float, node: int) -> str:
     return f"numa_hit {int(allocs)}\nnuma_miss 0\nnuma_foreign 0\ninterleave_hit 0\nlocal_node {int(allocs - other)}\nother_node {int(other)}\n"
 
 
+def _pick_node(residency: dict[int, float], i: int) -> int:
+    """Deterministic node choice per sample following the residency weights (low-discrepancy sequence)."""
+    nodes = sorted(residency)
+    acc, frac = 0.0, (i * 0.618) % 1.0
+    for n in nodes:
+        acc += residency[n]
+        if frac < acc:
+            return n
+    return nodes[-1]
+
+
+def _task_stat(s: Spec, tid: int, ticks: int, processor: int) -> str:
+    fields = ["S", "1", str(s.pid), str(s.pid), "0", "-1", "4194560", "0", "0", "0", "0", str(int(ticks * 0.85)), str(ticks - int(ticks * 0.85))]
+    fields += ["0", "0", "20", "0", str(s.threads), "0", "100", "1000000", "0", "18446744073709551615"] + ["0"] * 12 + ["-1", str(processor)] + ["0"] * 13
+    return f"{tid} ({s.comm}) " + " ".join(fields) + "\n"
+
+
 def _pid_files(s: Spec, t: float, i: int) -> dict[str, str]:
     assert s.pid
     cpu_time = int(s.proc_cpus * t * USER_HZ)
-    # Deterministic CPU choice per sample following the residency weights.
-    nodes = sorted(s.cpu_node_residency)
-    acc, pick = 0.0, nodes[-1]
-    frac = (i * 0.618) % 1.0
-    for n in nodes:
-        acc += s.cpu_node_residency[n]
-        if frac < acc:
-            pick = n
-            break
+
     # CPU ids are numbered core-major (cpu = core + k * cores), so node n owns cores n*cores_per_socket...
-    processor = pick * s.cores_per_socket + (i % s.cores_per_socket)
+    def cpu_on(node: int, k: int) -> int:
+        return node * s.cores_per_socket + (k % s.cores_per_socket)
+
+    leader_node = s.main_thread_node if s.main_thread_node is not None else _pick_node(s.cpu_node_residency, i)
+    processor = cpu_on(leader_node, i)
+    tasks: dict[str, str] = {}
+    n_tasks = min(s.sampled_threads, s.threads)
+    if n_tasks:
+        # Each worker has a home node; node n's workers share cpu_node_residency[n] of the
+        # process CPU time, so per-thread residency reproduces the spec exactly.
+        leader_idle = s.main_thread_node is not None
+        first_worker = 1 if leader_idle else 0
+        workers = list(range(first_worker, n_tasks)) or [0]
+        live = [n for n in sorted(s.cpu_node_residency) if s.cpu_node_residency[n] > 0]
+        homes = {k: live[j % len(live)] for j, k in enumerate(workers)}
+        per_node = {n: sum(1 for h in homes.values() if h == n) for n in live}
+        for k in range(n_tasks):
+            tid = s.pid + k
+            if k in homes:
+                node = homes[k]
+                ticks = int(cpu_time * s.cpu_node_residency[node] / per_node[node])
+                tasks[f"/proc/{s.pid}/task/{tid}/stat"] = _task_stat(s, tid, ticks, cpu_on(node, i + k))
+            else:  # idle leader
+                tasks[f"/proc/{s.pid}/task/{tid}/stat"] = _task_stat(s, tid, 5, processor)
     rss_pages = int(s.proc_anon_gib * (1 << 18))
     stat_fields = [
         "S",
@@ -291,6 +328,7 @@ def _pid_files(s: Spec, t: float, i: int) -> dict[str, str]:
         f"/proc/{s.pid}/schedstat": f"{int(on)} {int(wait)} {int(t * 5000)}\n",
         f"/proc/{s.pid}/smaps_rollup": f"00400000-7fff00000000 ---p 00000000 00:00 0 [rollup]\nRss: {anon_kib} kB\nAnonymous: {anon_kib} kB\nAnonHugePages: {huge} kB\nSwap: 0 kB\nPrivate_Hugetlb: 0 kB\nShared_Hugetlb: 0 kB\n",
         f"/proc/{s.pid}/numa_maps": "\n".join(numa_lines) + "\n",
+        **tasks,
     }
 
 
@@ -376,6 +414,7 @@ def recording(spec: Spec) -> Recording:
         "user_hz": USER_HZ,
         "page_size": 4096,
         "overruns": 0,
+        "max_threads": 256,
     }
     counters = {"events": {k: {"value": v, "raw": int(v), "running_frac": 1.0} for k, v in spec.counters.items()}, "skipped": {}} if spec.counters else None
     return Recording(meta, static_files(spec), samples, counters)

@@ -10,7 +10,7 @@ No warnings: nothing crossed a threshold in this window.
 
 ### 🔵 No hardware counters in this recording; cache and TLB efficiency can't be measured
 
-**Action:** Use `kptk profile -- <cmd>` with perf_event_paranoid <= 2 (or CAP_PERFMON), or pass `--perf-stat` with saved `perf stat -x;` output.
+**Action:** Use `kptk profile -- <cmd>` with perf_event_paranoid <= 2 (user-space only) or <= 1 / CAP_PERFMON (user+kernel), or pass `--perf-stat` with saved `perf stat -x;` output.
 
 ### 🔵 CPU frequency governor 'powersave' is active
 
@@ -22,7 +22,7 @@ Evidence: `governors=['powersave']`
 
 Evidence: `perf_event_paranoid=4`
 
-**Action:** For profiling sessions grant CAP_PERFMON to the profiler, or temporarily set perf_event_paranoid=2 (own processes, user+kernel).
+**Action:** For profiling sessions grant CAP_PERFMON to the profiler (user+kernel), set perf_event_paranoid=1 for user+kernel counting of your own processes, or 2 for user-space-only counting.
 
 ### 🔵 Single NUMA node: locality analysis doesn't apply
 

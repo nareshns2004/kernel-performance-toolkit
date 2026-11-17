@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from ..parsers.proc import busy_ticks, parse_pressure, parse_proc_stat, parse_schedstat, parse_vmstat, total_ticks
+from ..parsers.proc import busy_ticks, parse_pid_stat, parse_pressure, parse_proc_stat, parse_schedstat, parse_vmstat, total_ticks
 from ..parsers.tools import PerfStatEvent
 from ..record import Recording
 from ..topology import Topology, from_static
@@ -65,7 +65,8 @@ def audit_config(static: dict[str, str], topo: Topology) -> DomainResult:
             Severity.INFO,
             f"kernel.perf_event_paranoid={paranoid}: unprivileged hardware counters are disabled",
             {"perf_event_paranoid": paranoid},
-            "For profiling sessions grant CAP_PERFMON to the profiler, or temporarily set perf_event_paranoid=2 (own processes, user+kernel).",
+            "For profiling sessions grant CAP_PERFMON to the profiler (user+kernel), set perf_event_paranoid=1 for user+kernel "
+            "counting of your own processes, or 2 for user-space-only counting.",
         )
     return r
 
@@ -158,6 +159,14 @@ def data_quality(rec: Recording) -> dict[str, Any]:
             dq["missing"].append(f"pid {pid} exited or became unreadable after {len(alive)} samples")
         if not any(f"/proc/{pid}/numa_maps" in s.files for s in rec.samples):
             dq["missing"].append("numa_maps unreadable (permissions or short run): no per-process placement")
+        task_prefix = f"/proc/{pid}/task/"
+        if not any(p.startswith(task_prefix) for s in rec.samples for p in s.files):
+            dq["missing"].append("no per-thread stat files: NUMA residency follows the main thread only")
+        else:
+            cap = rec.meta.get("max_threads")
+            peak = max((parse_pid_stat(s.files[f"/proc/{pid}/stat"]).num_threads for s in alive), default=0)
+            if cap and peak > cap:
+                dq["missing"].append(f"process had up to {peak} threads; only the {cap} lowest tids were sampled for NUMA residency")
     return dq
 
 
@@ -165,12 +174,13 @@ def analyze(rec: Recording, events: dict[str, dict[str, float]] | None = None, t
     th = thresholds or Thresholds()
     w = Window(rec)
     topo = from_static(rec.static)
+    scope = None if events else (rec.counters or {}).get("counted_scope")
     events = events or (rec.counters or {}).get("events")
 
     cpu = analyze_cpu(w, topo, th)
     mem = analyze_memory(w, th)
     numa = analyze_numa(w, topo, th, cpu.metrics.get("process_node_residency"))
-    cache = analyze_cache(events, topo, th, mem.metrics.get("process_anon_kib"))
+    cache = analyze_cache(events, topo, th, mem.metrics.get("process_anon_kib"), scope)
     hp = analyze_hugepages(w, th, cache.metrics.get("dtlb_miss_ratio"))
     cfg = audit_config(rec.static, topo)
 

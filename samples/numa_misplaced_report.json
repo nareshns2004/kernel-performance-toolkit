@@ -1,5 +1,5 @@
 {
-  "generated_at": 1790865497.7161434,
+  "generated_at": 1794926631.0299644,
   "meta": {
     "tool": "kptk synth",
     "host": "synthetic-2s",
@@ -10,7 +10,8 @@
     "command": null,
     "user_hz": 100,
     "page_size": 4096,
-    "overruns": 0
+    "overruns": 0,
+    "max_threads": 256
   },
   "topology": {
     "cpus": 32,
@@ -154,6 +155,8 @@
       "process_threads": 32,
       "process_cpus_used": 4.0,
       "process_system_frac": 0.15,
+      "process_residency_source": "threads",
+      "process_threads_sampled": 8,
       "process_cpus_seen": [
         0,
         1,
@@ -162,10 +165,19 @@
         4,
         5,
         6,
-        7
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
       ],
       "process_node_residency": {
-        "0": 1.0
+        "0": 0.95,
+        "1": 0.05
       },
       "process_runq_wait_share": 0.0199999999853,
       "process_runq_wait_per_slice_ms": 0.0163265306,
@@ -233,9 +245,9 @@
       "process_memory_policies": {
         "default": 2
       },
-      "process_expected_distance": 19.35,
-      "process_remote_access_frac_est": 0.85,
-      "process_placement_mismatch": 0.85
+      "process_expected_distance": 18.97,
+      "process_remote_access_frac_est": 0.815,
+      "process_placement_mismatch": 0.8
     },
     "cache": {
       "caches": [
@@ -265,6 +277,7 @@
         }
       ],
       "available": true,
+      "counted_scope": null,
       "ipc": 0.6,
       "llc_miss_ratio": 0.4777777777777778,
       "llc_mpki": 17.916666666666668,
@@ -360,17 +373,18 @@
       "id": "numa.process_misplaced",
       "domain": "numa",
       "severity": "critical",
-      "title": "About 85% of the process's memory accesses are likely remote: threads ran mostly on node 0, memory sits mostly on node 1",
+      "title": "About 82% of the process's memory accesses are likely remote: threads ran mostly on node 0, memory sits mostly on node 1",
       "evidence": {
         "cpu_node_residency": {
-          "0": 1.0
+          "0": 0.95,
+          "1": 0.05
         },
         "memory_by_node": {
           "0": 0.15,
           "1": 0.85
         },
-        "placement_mismatch": 0.85,
-        "expected_slit_distance": 19.35
+        "placement_mismatch": 0.8,
+        "expected_slit_distance": 18.97
       },
       "recommendation": "Start it with numactl --cpunodebind=1 --membind=1, or migratepages 4242 1 0.",
       "why": "Typical cause: memory was first-touched by an initialisation thread on one node, then worker threads were scheduled on another."
