@@ -57,7 +57,7 @@ def profile(cmd: list[str], interval_s: float = 0.5, events: list[str] | None = 
     _, status = os.waitpid(pid, 0)
     returncode = os.waitstatus_to_exitcode(status)
     if counters is not None:
-        rec.counters = readings_to_dict(counters.read(), counters.skipped)
+        rec.counters = readings_to_dict(counters.read(), counters.skipped, counters.scope)
         counters.close()
     else:
         rec.counters = {"events": None, "error": error}

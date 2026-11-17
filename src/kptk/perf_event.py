@@ -12,8 +12,16 @@ group* (IPC, miss rate) stay exact even under multiplexing. That's why
 :class:`CounterGroup` keeps leader-relative ratios in one group when it can.
 
 Access is governed by ``/proc/sys/kernel/perf_event_paranoid`` (and
-CAP_PERFMON). On Ubuntu the default of 4 blocks unprivileged use entirely, so every
-entry point here degrades to a clear :class:`PerfUnavailable` error instead of crashing.
+CAP_PERFMON). Without CAP_PERFMON:
+
+* ``<= 1``: user and kernel counting of your own processes;
+* ``2``: *user-space only*. An event that counts kernel mode (``exclude_kernel=0``)
+  fails with EACCES, so :class:`Counters` retries with ``exclude_kernel=1``, which is
+  what ``perf stat`` does with an implicit ``:u`` modifier, and reports
+  ``counted_scope="user"``;
+* ``>= 3`` (Ubuntu/Debian default 4): no unprivileged access at all.
+
+Every entry point degrades to a clear :class:`PerfUnavailable` error instead of crashing.
 """
 
 from __future__ import annotations
@@ -101,7 +109,13 @@ class PerfEventAttr(ctypes.Structure):
 
 
 class PerfUnavailable(RuntimeError):
-    pass
+    def __init__(self, message: str, err: int | None = None) -> None:
+        super().__init__(message)
+        self.errno = err
+
+    @property
+    def permission(self) -> bool:
+        return self.errno in (errno.EACCES, errno.EPERM)
 
 
 def event_config(name: str) -> tuple[int, int]:
@@ -155,10 +169,10 @@ def _syscall(attr: PerfEventAttr, pid: int, cpu: int, group_fd: int, flags: int)
         err = ctypes.get_errno()
         hint = ""
         if err in (errno.EACCES, errno.EPERM):
-            hint = f" (perf_event_paranoid={_paranoid()}; need <= 2 for own processes, or CAP_PERFMON)"
+            hint = f" (perf_event_paranoid={_paranoid()}; need <= 2 for user-space counting of own processes, <= 1 to include kernel mode, or CAP_PERFMON)"
         elif err == errno.ENOENT:
             hint = " (event not supported by this CPU/PMU, common in VMs)"
-        raise PerfUnavailable(f"perf_event_open failed: {os.strerror(err)}{hint}")
+        raise PerfUnavailable(f"perf_event_open failed: {os.strerror(err)}{hint}", err)
     return fd
 
 
@@ -198,20 +212,54 @@ class Counters:
     ``inherit`` is needed to count all threads and children of a command, and
     the kernel doesn't support PERF_FORMAT_GROUP reads on inherited events, so
     these are separate fds. Each is multiplex-scaled independently.
+
+    Counting starts user+kernel. If the kernel refuses that with EACCES/EPERM
+    (``perf_event_paranoid=2`` without CAP_PERFMON), every event is reopened
+    user-only and :attr:`scope` becomes ``"user"``, so all events in one run share
+    the same scope and their ratios stay meaningful.
     """
 
-    def __init__(self, events: list[str], pid: int = 0, cpu: int = -1, inherit: bool = True, enable_on_exec: bool = False) -> None:
+    def __init__(self, events: list[str], pid: int = 0, cpu: int = -1, inherit: bool = True, enable_on_exec: bool = False, user_only: bool = False) -> None:
         self.events = events
         self.fds: list[tuple[str, int]] = []
         self.skipped: dict[str, str] = {}
-        for name in events:
-            attr = make_attr(name, disabled=True, inherit=inherit, enable_on_exec=enable_on_exec)
+        self.user_only = user_only
+        self.fallback_reason: str | None = None
+        try:
+            self._open_all(pid, cpu, inherit, enable_on_exec)
+        except PerfUnavailable as exc:
+            if not exc.permission or self.user_only:
+                raise
+            # Kernel-mode counting refused (perf_event_paranoid=2): reopen the whole set
+            # user-only, so every event shares one scope and ratios stay meaningful.
+            self._close_all()
+            self.user_only, self.fallback_reason = True, str(exc)
+            self._open_all(pid, cpu, inherit, enable_on_exec)
+
+    def _open_all(self, pid: int, cpu: int, inherit: bool, enable_on_exec: bool) -> None:
+        self.skipped = {}
+        for name in self.events:
             try:
-                self.fds.append((name, _syscall(attr, pid, cpu, -1, 0)))
+                self.fds.append((name, self._open(name, pid, cpu, inherit, enable_on_exec)))
             except PerfUnavailable as exc:
-                if not self.fds and "paranoid" in str(exc):
-                    raise  # no permission at all: fail fast with the hint
+                if exc.permission and (not self.user_only or not self.fds):
+                    self._close_all()
+                    raise  # about scope or access, not this one event: let the caller decide
                 self.skipped[name] = str(exc)
+
+    def _open(self, name: str, pid: int, cpu: int, inherit: bool, enable_on_exec: bool) -> int:
+        attr = make_attr(name, disabled=True, inherit=inherit, enable_on_exec=enable_on_exec, user_only=self.user_only)
+        return _syscall(attr, pid, cpu, -1, 0)
+
+    @property
+    def scope(self) -> str:
+        """What the counts cover: ``"user+kernel"`` or ``"user"`` (kernel mode excluded)."""
+        return "user" if self.user_only else "user+kernel"
+
+    def _close_all(self) -> None:
+        for _, fd in self.fds:
+            os.close(fd)
+        self.fds = []
 
     def enable(self) -> None:
         for _, fd in self.fds:
@@ -229,9 +277,7 @@ class Counters:
         return out
 
     def close(self) -> None:
-        for _, fd in self.fds:
-            os.close(fd)
-        self.fds = []
+        self._close_all()
 
     def __enter__(self) -> Counters:
         return self
@@ -240,10 +286,11 @@ class Counters:
         self.close()
 
 
-def readings_to_dict(readings: list[Reading], skipped: dict[str, str] | None = None) -> dict[str, object]:
+def readings_to_dict(readings: list[Reading], skipped: dict[str, str] | None = None, scope: str = "user+kernel") -> dict[str, object]:
     return {
         "events": {r.name: {"value": r.value, "raw": r.raw, "running_frac": round(r.running_frac, 4)} for r in readings},
         "skipped": skipped or {},
+        "counted_scope": scope,
     }
 
 

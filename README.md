@@ -107,9 +107,16 @@ docs/             architecture · metrics · linux-performance · examples · de
 
 ## Requirements and permissions
 
-Linux, Python ≥ 3.10. Everything except hardware counters works unprivileged. Counters need
-`kernel.perf_event_paranoid ≤ 2` or `CAP_PERFMON`; without them the report says so and
-continues. Run-queue latency needs `CONFIG_SCHEDSTATS`; PSI needs `CONFIG_PSI`.
+Linux, Python ≥ 3.10. Everything except hardware counters works unprivileged. Hardware
+counters depend on `kernel.perf_event_paranoid` (or `CAP_PERFMON`):
+
+| paranoid | unprivileged counting of your own processes |
+|---|---|
+| ≤ 1 | user + kernel |
+| 2 | user space only: kptk retries with `exclude_kernel=1` and the report records `counted_scope: user` |
+| ≥ 3 (Ubuntu/Debian default 4) | none; the report says so and continues without counters |
+
+`CAP_PERFMON` (or root) always gets user + kernel. Run-queue latency needs `CONFIG_SCHEDSTATS`; PSI needs `CONFIG_PSI`.
 `scripts/setup_hugepages.sh` reserves hugetlb pages and requires root.
 
 ## Development

@@ -65,7 +65,8 @@ def audit_config(static: dict[str, str], topo: Topology) -> DomainResult:
             Severity.INFO,
             f"kernel.perf_event_paranoid={paranoid}: unprivileged hardware counters are disabled",
             {"perf_event_paranoid": paranoid},
-            "For profiling sessions grant CAP_PERFMON to the profiler, or temporarily set perf_event_paranoid=2 (own processes, user+kernel).",
+            "For profiling sessions grant CAP_PERFMON to the profiler (user+kernel), set perf_event_paranoid=1 for user+kernel "
+            "counting of your own processes, or 2 for user-space-only counting.",
         )
     return r
 
@@ -165,12 +166,13 @@ def analyze(rec: Recording, events: dict[str, dict[str, float]] | None = None, t
     th = thresholds or Thresholds()
     w = Window(rec)
     topo = from_static(rec.static)
+    scope = None if events else (rec.counters or {}).get("counted_scope")
     events = events or (rec.counters or {}).get("events")
 
     cpu = analyze_cpu(w, topo, th)
     mem = analyze_memory(w, th)
     numa = analyze_numa(w, topo, th, cpu.metrics.get("process_node_residency"))
-    cache = analyze_cache(events, topo, th, mem.metrics.get("process_anon_kib"))
+    cache = analyze_cache(events, topo, th, mem.metrics.get("process_anon_kib"), scope)
     hp = analyze_hugepages(w, th, cache.metrics.get("dtlb_miss_ratio"))
     cfg = audit_config(rec.static, topo)
 

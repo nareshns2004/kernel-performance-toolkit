@@ -110,6 +110,8 @@ def cmd_profile(args: argparse.Namespace) -> int:
         rec.save(args.output)
     if rec.counters and rec.counters.get("error"):
         print(f"note: hardware counters unavailable: {rec.counters['error']}", file=sys.stderr)
+    elif rec.counters and rec.counters.get("counted_scope") == "user":
+        print("note: kernel-mode counting not permitted (perf_event_paranoid=2?); counters cover user space only", file=sys.stderr)
     if len(rec.samples) < 2:
         print("command finished before two samples were taken; lower --interval", file=sys.stderr)
         return rc or 1
