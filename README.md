@@ -122,7 +122,7 @@ counters depend on `kernel.perf_event_paranoid` (or `CAP_PERFMON`):
 ## Development
 
 ```bash
-make check         # ruff + mypy + pytest (43 tests, < 1 s; no CPU-heavy tests)
+make check         # ruff + mypy + pytest (59 tests, ~1.5 s; no CPU-heavy tests)
 make bench-build   # compile microbenchmarks (does not run them)
 make samples       # regenerate the sample reports
 ```

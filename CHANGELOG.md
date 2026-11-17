@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased: hardening (M1)
+
+### Fixed
+- **Counters at `perf_event_paranoid=2`** (A1): unprivileged users may only count user
+  space there; every counter used to fail with EACCES. kptk now retries with
+  `exclude_kernel=1` and records `counted_scope` in the report. Paranoid advice corrected.
+- **NUMA residency followed only the main thread** (A2): now built from every thread's
+  `/proc/<pid>/task/<tid>/stat`, weighted by its CPU time (`record --max-threads`, default 256).
+- **`compare` could never be significant at 3 runs per side** (A3): the p-value floor is
+  printed, below-floor results are `inconclusive`, and the hint asks for ≥ 5 runs.
+- **Rates used wall-clock time** (A5): samples carry `CLOCK_MONOTONIC`; an NTP step no longer
+  corrupts rates.
+- Docs referenced a non-existent interview guide and `CounterGroup` class (A6, A7).
+
+### Added
+- `compare --primary` (pre-declared metrics tested at α) with Benjamini-Hochberg FDR across
+  the other metrics, plus `--no-fdr` and `--alpha` (A4).
+
 ## 0.2.0: analysis toolkit
 
 Rebuilt from the 0.1 text-to-JSON scaffold into a packaged toolkit (`kptk`).
