@@ -18,7 +18,7 @@ class Window:
             raise ValueError("a recording needs at least 2 samples to compute rates")
         self.rec = rec
         self.first, self.last = rec.samples[0], rec.samples[-1]
-        self.dt = self.last.ts - self.first.ts
+        self.dt = self.last.t - self.first.t  # monotonic: an NTP step mid-recording must not corrupt rates
         self.user_hz = int(rec.meta.get("user_hz") or 100)
         self.page_kib = int(rec.meta.get("page_size") or 4096) // 1024
 
@@ -28,7 +28,7 @@ class Window:
         if len(present) < 2:
             return None
         a, b = present[0], present[-1]
-        return parse(a.files[path]), parse(b.files[path]), b.ts - a.ts
+        return parse(a.files[path]), parse(b.files[path]), b.t - a.t
 
     def series(self, path: str, parse: Callable[[str], T]) -> list[tuple[Sample, T]]:
         return [(s, parse(s.files[path])) for s in self.rec.samples if path in s.files]

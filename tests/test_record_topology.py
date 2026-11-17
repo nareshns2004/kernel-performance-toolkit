@@ -82,3 +82,36 @@ def test_live_thread_stats_for_own_process() -> None:
         worker.join()
     tasks = [p for p in rec.samples[0].files if p.startswith(f"/proc/{os.getpid()}/task/")]
     assert len(tasks) >= 2
+
+
+def test_ntp_step_does_not_corrupt_rates(tmp_path) -> None:
+    """A5: wall clock steps back an hour mid-recording; rates must use the monotonic clock."""
+    from kptk.analysis.window import Window
+
+    ctxt = iter(range(0, 10_000, 1_000))
+    # meta's "started", then 4 samples; wall time steps back 3600 s after sample 2
+    wall = iter([1_700_000_000.0, 1_700_000_000.0, 1_700_000_001.0, 1_699_996_402.0, 1_699_996_403.0])
+    mono = iter([50.0, 51.0, 52.0, 53.0])
+
+    class Source(DictSource):
+        def read(self, path: str) -> str | None:
+            return f"cpu 1 0 0 1 0 0 0 0 0 0\nctxt {next(ctxt)}\n" if path == "/proc/stat" else None
+
+    rec = Recorder(Source({"/proc/stat": ""}), interval_s=0.001, clock=lambda: next(wall), monotonic=lambda: next(mono)).run(max_samples=4)
+    w = Window(rec)
+    assert w.dt == 3.0 and rec.duration_s == 3.0
+    assert [s.ts for s in rec.samples][2] < rec.samples[0].ts  # the step really happened in wall time
+    path = tmp_path / "r.jsonl"
+    rec.save(path)
+    back = Recording.load(path)
+    assert [s.mono for s in back.samples] == [50.0, 51.0, 52.0, 53.0] and Window(back).dt == 3.0
+
+
+def test_old_recordings_without_mono_fall_back_to_wall_time(tmp_path) -> None:
+    import json
+
+    path = tmp_path / "old.jsonl"
+    rows = [{"type": "meta", "static": {}}] + [{"type": "sample", "ts": 100.0 + i, "files": {}} for i in range(3)]
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    rec = Recording.load(path)
+    assert rec.samples[0].mono is None and rec.duration_s == 2.0

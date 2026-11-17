@@ -131,9 +131,20 @@ def expand(source: Source, patterns: Iterable[str]) -> list[str]:
 
 @dataclass
 class Sample:
+    """One snapshot. ``ts`` is wall-clock time (for display and correlation with logs);
+    ``mono`` is CLOCK_MONOTONIC, which NTP can slew but never step, and is what every
+    rate is divided by. Recordings from before kptk stored ``mono`` fall back to ``ts``.
+    """
+
     ts: float
     files: dict[str, str]
     cost_s: float = 0.0
+    mono: float | None = None
+
+    @property
+    def t(self) -> float:
+        """Timestamp to use for elapsed-time arithmetic."""
+        return self.mono if self.mono is not None else self.ts
 
 
 @dataclass
@@ -150,7 +161,7 @@ class Recording:
 
     @property
     def duration_s(self) -> float:
-        return self.samples[-1].ts - self.samples[0].ts if len(self.samples) > 1 else 0.0
+        return self.samples[-1].t - self.samples[0].t if len(self.samples) > 1 else 0.0
 
     def latest(self, path: str) -> str | None:
         """Most recent sample that contains ``path`` (slow files aren't in every sample)."""
@@ -163,7 +174,11 @@ class Recording:
         with _open(path, "w") as fh:
             fh.write(json.dumps({"type": "meta", **self.meta, "static": self.static}) + "\n")
             for s in self.samples:
-                fh.write(json.dumps({"type": "sample", "ts": s.ts, "cost_s": s.cost_s, "files": s.files}, separators=(",", ":")) + "\n")
+                row: dict[str, Any] = {"type": "sample", "ts": s.ts}
+                if s.mono is not None:
+                    row["mono"] = s.mono
+                row |= {"cost_s": s.cost_s, "files": s.files}
+                fh.write(json.dumps(row, separators=(",", ":")) + "\n")
             if self.counters is not None:
                 fh.write(json.dumps({"type": "counters", **self.counters}) + "\n")
 
@@ -183,7 +198,7 @@ class Recording:
                     static = d.pop("static", {})
                     meta = d
                 elif kind == "sample":
-                    samples.append(Sample(d["ts"], d["files"], d.get("cost_s", 0.0)))
+                    samples.append(Sample(d["ts"], d["files"], d.get("cost_s", 0.0), d.get("mono")))
                 elif kind == "counters":
                     counters = d
         return cls(meta, static, samples, counters)
@@ -207,12 +222,14 @@ class Recorder:
         slow_every: int = 5,
         clock: Callable[[], float] = time.time,
         max_threads: int = DEFAULT_MAX_THREADS,
+        monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self.source = source or LiveSource()
         self.interval_s = interval_s
         self.pid = pid
         self.slow_every = max(1, slow_every)
-        self.clock = clock
+        self.clock = clock  # wall clock: display only
+        self.monotonic = monotonic  # elapsed time: all rates
         self.max_threads = max(0, max_threads)
         self.stop_event = threading.Event()
         self.overruns = 0
@@ -228,7 +245,7 @@ class Recorder:
 
     def sample(self, index: int) -> Sample:
         t0 = time.perf_counter()
-        ts = self.clock()
+        ts, mono = self.clock(), self.monotonic()
         files: dict[str, str] = {}
         paths = list(self._dynamic)
         if self.pid:
@@ -240,7 +257,7 @@ class Recorder:
             text = self.source.read(p)
             if text is not None:
                 files[p] = text
-        return Sample(ts, files, time.perf_counter() - t0)
+        return Sample(ts, files, time.perf_counter() - t0, mono)
 
     def _task_stat_paths(self) -> list[str]:
         if not self.max_threads:
